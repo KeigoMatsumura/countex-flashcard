@@ -18,11 +18,12 @@ GEND_IMG_DIR_TOCOMPARE=f"../data/genim/tocompare/vqa_output_timo_genim_epoch{TOC
 
 # loss分析の設定
 PERCEPTUAL_LOSS_BATCH_SIZE=128
-L1_NORM_BATCH_SIZE=1024
+L1_NORM_BATCH_SIZE=4096
 NUM_OF_WORKERS=2
 DATA_SHUFFLE=False
 METRICS_TYPE = ['perceptual_loss', 'l1_norm']  # 必要に応じて 'perceptual_loss' と 'l1_norm' のいずれかまたは両方を含める
-ANALYSIS_RESULT_PATH = f"loss_analysis/results/result_{BASE_EPOCH}-{TOCOMPARE_EPOCH}.json"
+CALCULATED_LOSS_RESULT_PATH = f"loss_analysis/results/calculated_loss_result_{BASE_EPOCH}-{TOCOMPARE_EPOCH}.json"
+ANALYSIS_RESULT_PATH = f"loss_analysis/results/analysis_result_{BASE_EPOCH}-{TOCOMPARE_EPOCH}.json"
 
 # キャッシュの設定
 ENABLE_CACHE = True  # キャッシュを有効にするか

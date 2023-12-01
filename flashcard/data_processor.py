@@ -21,7 +21,7 @@ class DataProcessor:
         self.qa_data = {}
         self.img_data = {}
         self.size = (256,256)
-        self.filter_rate = 0.8
+        self.filter_rate = 0.7
 
         # 画像データの準備
         self.prepare_image_data()
@@ -264,8 +264,13 @@ class DataProcessor:
     def is_filter_passed(self, image_id, analized_data):
         """特定の画像がフィルタ条件を満たすか判定する関数"""
         qa_data = self.qa_data[image_id]
+        # return (qa_data['ans1_base']['ans'][0] != qa_data['ans2_base']['ans'][0] and
+        #         qa_data['ans1_tocompare']['ans'][0] != qa_data['ans2_tocompare']['ans'][0] and
+        #         qa_data['ans1_base']['val'][0] >= self.filter_rate and
+        #         qa_data['ans2_base']['val'][0] >= self.filter_rate and
+        #         analized_data[image_id]['base']['perceptual_loss'] < analized_data[image_id]['tocompare']['perceptual_loss'] and
+        #         analized_data[image_id]['base']['l1_norm'] > analized_data[image_id]['tocompare']['l1_norm'])
         return (qa_data['ans1_base']['ans'][0] != qa_data['ans2_base']['ans'][0] and
-                qa_data['ans1_tocompare']['ans'][0] != qa_data['ans2_tocompare']['ans'][0] and
-                qa_data['ans1_base']['val'][0] >= self.filter_rate and
-                qa_data['ans2_base']['val'][0] >= self.filter_rate and
-                analized_data[image_id]['base'] > analized_data[image_id]['tocompare'])
+                qa_data['ans1_tocompare']['ans'][0] == qa_data['ans2_tocompare']['ans'][0] and
+                analized_data[image_id]['base']['perceptual_loss'] < analized_data[image_id]['tocompare']['perceptual_loss'] and
+                analized_data[image_id]['base']['l1_norm'] > analized_data[image_id]['tocompare']['l1_norm'])

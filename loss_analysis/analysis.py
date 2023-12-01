@@ -15,14 +15,18 @@ class Analysis():
         self.metrics_types = metrics_types
         self.perceptual_loss = {}
         self.l1_norm_data = {}
-        self.results = {metric: {'all': [],'color': [],'shape': [],
-                                'diff_all': [],'diff_color': [],'diff_shape': [],
-                                'same_all': [],'same_color': [],'same_shape': []} 
-                                for metric in metrics_types
-                        }
+        self.results = {metric: {'base': self._init_metric_categories(),
+                                 'tocompare': self._init_metric_categories()}
+                        for metric in metrics_types}
         self.loss_data = {}
         self.model = models.vgg19(pretrained=True).features.to(device)  # Example using VGG19
         self.model.eval()  # Set model to evaluation mode
+
+    def _init_metric_categories(self):
+        """ Initialize categories for each metric type """
+        return {'all': [], 'color': [], 'shape': [],
+                'diff_all': [], 'diff_color': [], 'diff_shape': [],
+                'same_all': [], 'same_color': [], 'same_shape': []}
 
     def find_missing_analysis_types(self, existing_data):
         if not existing_data:
@@ -37,9 +41,9 @@ class Analysis():
 
 
     def check_and_process_loss(self, loader, analysis_types):
-        if os.path.exists(config.ANALYSIS_RESULT_PATH):
-            print(f"Loading data from {config.ANALYSIS_RESULT_PATH}...")
-            with open(config.ANALYSIS_RESULT_PATH, 'r') as json_file:
+        if os.path.exists(config.CALCULATED_LOSS_RESULT_PATH):
+            print(f"Loading data from {config.CALCULATED_LOSS_RESULT_PATH}...")
+            with open(config.CALCULATED_LOSS_RESULT_PATH, 'r') as json_file:
                 self.loss_data = json.load(json_file)
 
             missing_types = self.find_missing_analysis_types(self.loss_data)
@@ -57,7 +61,7 @@ class Analysis():
             self.process_batches(loader, analysis_type)
 
         # 結果を JSON に保存
-        with open(config.ANALYSIS_RESULT_PATH, 'w') as json_file:
+        with open(config.CALCULATED_LOSS_RESULT_PATH, 'w') as json_file:
             json.dump(self.loss_data, json_file, indent=4)
         print("Updated data have been processed.")
 
@@ -117,33 +121,99 @@ class Analysis():
             pass
         print(f"{analysis_type.capitalize()} data have been processed.")
 
+    # def process_qa_data(self, qa_data, metrics_data):
+    #     question = qa_data['question']
+    #     is_color_question = question.startswith("What color")
+    #     is_shape_question = question.startswith("What shape")
+    #     is_diff_answer = qa_data['ans1']['ans'][0] != qa_data['ans2']['ans'][0]
+
+        # for metric, metric_value in metrics_data.items():
+        #     self.results[metric]['all'].append(metric_value)
+        #     if is_color_question:
+        #         self.results[metric]['color'].append(metric_value)
+        #     elif is_shape_question:
+        #         self.results[metric]['shape'].append(metric_value)
+
+        #     if is_diff_answer:
+        #         self.results[metric]['diff_all'].append(metric_value)
+        #         if is_color_question:
+        #             self.results[metric]['diff_color'].append(metric_value)
+        #         elif is_shape_question:
+        #             self.results[metric]['diff_shape'].append(metric_value)
+
+        #     elif not is_diff_answer:
+        #         self.results[metric]['same_all'].append(metric_value)
+        #         if is_color_question:
+        #             self.results[metric]['same_color'].append(metric_value)
+        #         elif is_shape_question:
+        #             self.results[metric]['same_shape'].append(metric_value)
+
+        # for metric in self.metrics_types:
+        #     # Check if 'base' and 'tocompare' keys exist and if the specific metric is present
+        #     base_metric_value = metrics_data.get('base', {}).get(metric)
+        #     tocompare_metric_value = metrics_data.get('tocompare', {}).get(metric)
+
+        #     # Process base metrics
+        #     if base_metric_value is not None:
+        #         self.results[metric]['all'].append(base_metric_value)
+        #         if is_color_question:
+        #             self.results[metric]['color'].append(base_metric_value)
+        #         elif is_shape_question:
+        #             self.results[metric]['shape'].append(base_metric_value)
+
+        #         if is_diff_answer:
+        #             self.results[metric]['diff_all'].append(base_metric_value)
+        #             if is_color_question:
+        #                 self.results[metric]['diff_color'].append(base_metric_value)
+        #             elif is_shape_question:
+        #                 self.results[metric]['diff_shape'].append(base_metric_value)
+        #         else:
+        #             self.results[metric]['same_all'].append(base_metric_value)
+        #             if is_color_question:
+        #                 self.results[metric]['same_color'].append(base_metric_value)
+        #             elif is_shape_question:
+        #                 self.results[metric]['same_shape'].append(base_metric_value)  
+        # 
     def process_qa_data(self, qa_data, metrics_data):
+        """
+        Processes the QA data and updates the analysis results.
+
+        :param qa_data: The QA data for a specific image.
+        :param metrics_data: The metrics data containing 'base' and 'tocompare' keys.
+        """
         question = qa_data['question']
         is_color_question = question.startswith("What color")
         is_shape_question = question.startswith("What shape")
         is_diff_answer = qa_data['ans1']['ans'][0] != qa_data['ans2']['ans'][0]
 
-        for metric, metric_value in metrics_data.items():
-            self.results[metric]['all'].append(metric_value)
-            if is_color_question:
-                self.results[metric]['color'].append(metric_value)
-            elif is_shape_question:
-                self.results[metric]['shape'].append(metric_value)
+        for metric in self.metrics_types:
+            if 'base' in metrics_data and metric in metrics_data['base']:
+                self._update_results('base', metric, metrics_data['base'][metric],
+                                     is_color_question, is_shape_question, is_diff_answer)
+            if 'tocompare' in metrics_data and metric in metrics_data['tocompare']:
+                self._update_results('tocompare', metric, metrics_data['tocompare'][metric],
+                                     is_color_question, is_shape_question, is_diff_answer)
 
-            if is_diff_answer:
-                self.results[metric]['diff_all'].append(metric_value)
-                if is_color_question:
-                    self.results[metric]['diff_color'].append(metric_value)
-                elif is_shape_question:
-                    self.results[metric]['diff_shape'].append(metric_value)
+    def _update_results(self, source, metric, metric_value, is_color_question, is_shape_question, is_diff_answer):
+        """ Update results for a specific metric source ('base' or 'tocompare') """
+        categories = self._determine_categories(is_color_question, is_shape_question, is_diff_answer)
+        for category in categories:
+            self.results[metric][source][category].append(metric_value)
 
-            elif not is_diff_answer:
-                self.results[metric]['same_all'].append(metric_value)
-                if is_color_question:
-                    self.results[metric]['same_color'].append(metric_value)
-                elif is_shape_question:
-                    self.results[metric]['same_shape'].append(metric_value)
+    def _determine_categories(self, is_color_question, is_shape_question, is_diff_answer):
+        """ Determine the categories based on question type and answer difference """
+        categories = ['all']
+        if is_color_question:
+            categories.append('color')
+        elif is_shape_question:
+            categories.append('shape')
 
+        if is_diff_answer:
+            categories.extend(['diff_all', 'diff_color' if is_color_question else 'diff_shape'])
+        else:
+            categories.extend(['same_all', 'same_color' if is_color_question else 'same_shape'])
+        return categories
+    
     def calculate_l1_norm(self, img1, img2, size=(256,256), img_channel=3):
         # Calculate L1 norm between img1 and img2
         l1_loss = torch.abs(img1 - img2).sum(dim=[0, 1, 2])  # バッチ内の各ペアについてL1ノルムを計算
@@ -162,7 +232,7 @@ class Analysis():
         # Calculate and return the Perceptual Loss
         return F.mse_loss(features1, features2)
     
-    def calculate_mean_and_variance(values):
+    def calculate_mean_and_variance(self, values):
         # import pdb; pdb.set_trace()
         """指定された値のリストから平均と分散を計算する関数"""
         if values:  # リストが空でない場合に計算
@@ -172,12 +242,25 @@ class Analysis():
         else:  # リストが空の場合、平均と分散は定義できない
             return {'mean': None, 'std': None}
         
+    # def analyze_and_save_results(self, file_name):
+    #     final_results = {}
+    #     for metric, data in self.results.items():
+    #         final_results[metric] = {}
+    #         for category, values in data.items():
+    #             final_results[metric][category] = self.calculate_mean_and_variance(values)
+
+    #     with open(file_name, 'w') as f:
+    #         json.dump(final_results, f, indent=4)
+            
     def analyze_and_save_results(self, file_name):
         final_results = {}
-        for metric, data in self.results.items():
+        for metric, sources in self.results.items():
             final_results[metric] = {}
-            for category, values in data.items():
-                final_results[metric][category] = self.calculate_mean_and_variance(values)
-
+            for source, categories in sources.items():
+                final_results[metric][source] = {}
+                for category, values in categories.items():
+                    final_results[metric][source][category] = self.calculate_mean_and_variance(values)
+        
+        # Save the updated structure
         with open(file_name, 'w') as f:
             json.dump(final_results, f, indent=4)
